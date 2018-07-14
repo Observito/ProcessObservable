@@ -14,3 +14,8 @@ as certain other files like .sln files.
 ```csharp
 var observable = ProcessObservable.TryCreateFromFile("LoremIpsum.exe");
 ```
+
+## NuGet
+
+ObservableProcess is available as a NuGet package:
+https://www.nuget.org/packages/Exoteric-ObservableProcess
