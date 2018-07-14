@@ -10,7 +10,7 @@ as certain other files like .sln files.
 
 ![Alt Text](example.gif)
 
-##Usage
+## Usage
 ```csharp
 var observable = ProcessObservable.TryCreateFromFile("LoremIpsum.exe");
 ```
