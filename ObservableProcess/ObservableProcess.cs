@@ -50,24 +50,29 @@ namespace ObservableProcess
                 argStrBuilder.Append($" {arguments}");
             argStr = argStrBuilder.ToString();
 
-            var process = new Process()
+            // Need to wrap the process creation -- otherwise the same process will be setup 
+            // once and reused when the next subscription happens
+            return Create(() =>
             {
-                EnableRaisingEvents = true,
-                StartInfo = new ProcessStartInfo()
+                var process = new Process()
                 {
-                    FileName = "cmd.exe",
-                    Arguments = argStr,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                },
-            };
-
-            customizer?.Invoke(process);
-
-            return Create(process);
+                    EnableRaisingEvents = true,
+                    StartInfo = new ProcessStartInfo()
+                    {
+                        FileName = "cmd.exe",
+                        Arguments = argStr,
+                        RedirectStandardInput = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        ErrorDialog = false,
+                        WindowStyle = ProcessWindowStyle.Hidden,
+                    },
+                };
+                customizer?.Invoke(process);
+                return process;
+            });
         }
 
         /// <summary>
@@ -82,28 +87,39 @@ namespace ObservableProcess
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName));
-            var process = new Process()
+
+            // Need to wrap the process creation -- otherwise the same process will be setup 
+            // once and reused when the next subscription happens
+            return Create(() =>
             {
-                EnableRaisingEvents = true,
-                StartInfo = new ProcessStartInfo()
+                var process = new Process()
                 {
-                    FileName = fileName,
-                    Arguments = arguments,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                },
-            };
-            customizer?.Invoke(process);
-            return Create(process);
+                    EnableRaisingEvents = true,
+                    StartInfo = new ProcessStartInfo()
+                    {
+                        FileName = fileName,
+                        Arguments = arguments,
+                        RedirectStandardInput = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        ErrorDialog = false,
+                        WindowStyle = ProcessWindowStyle.Hidden,
+                    },
+                };
+                customizer?.Invoke(process);
+                return process;
+            });
         }
 
-        private static IObservable<ProcessSignal> Create(Process process)
+        private static IObservable<ProcessSignal> Create(Func<Process> factory)
         {
             return Observable.Create<ProcessSignal>(observer =>
             {
+                // Create the new process
+                Process process = factory();
+
                 // Setup a subscription result that captures inner subscriptions to events so they can all
                 // be disposed together by the subcriber
                 var subscription = new CompositeDisposable();
@@ -182,10 +198,19 @@ namespace ObservableProcess
                 // whenever the subscription is disposed by whatever means
                 subscription.Add(Disposable.Create(observer.OnCompleted));
 
+                // Ensures the streams are closed when disposing
+                subscription.Add(Disposable.Create(() =>
+                {
+                    //process.Dispose();
+                }));
+
                 // Start the process
                 try
                 {
                     process.Start();
+
+                    // Capture the process id -- cannot get when disposed
+                    procId = process.Id;
                 }
                 catch (Exception ex)
                 {
@@ -194,9 +219,6 @@ namespace ObservableProcess
                     ctx.Data.Add("Process", process);
                     observer.OnError(ctx);
                 }
-
-                // Capture the process id -- cannot get when disposed
-                procId = process.Id;
 
                 // Start capturing output and error streams
                 process.BeginOutputReadLine();
