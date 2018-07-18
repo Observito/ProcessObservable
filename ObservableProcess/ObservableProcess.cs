@@ -20,9 +20,11 @@ namespace ObservableProcess
         /// <param name="fileName">File to run</param>
         /// <param name="arguments">Optional arguments to executable or script</param>
         /// <param name="customizer">Optional process customizer</param>
+        /// <param name="failfast">If true exceptions at subscription time are rethrown, 
+        /// otherwise subscription exceptions are materialized as an OnError call.</param>
         /// <exception cref="ArgumentOutOfRangeException">If the file type is not supported or the file type cannot be determined</exception>
         /// <returns>An observable that can observe the side-effects of a process</returns> 
-        public static IObservable<ProcessSignal> TryCreateFromFile(string fileName, string arguments = null, Action<Process> customizer = null)
+        public static IObservable<ProcessSignal> TryCreateFromFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
         {
             var ext = Path.GetExtension(fileName)?.ToLowerInvariant();
             if (ext == ".exe")
@@ -37,15 +39,17 @@ namespace ObservableProcess
         /// <param name="fileName">Script file to run</param>
         /// <param name="arguments">Optional arguments to executable</param>
         /// <param name="customizer">Optional process customizer</param>
+        /// <param name="failfast">If true exceptions at subscription time are rethrown, 
+        /// otherwise subscription exceptions are materialized as an OnError call.</param>
         /// <exception cref="ArgumentOutOfRangeException">If the fileName is invalid</exception>
         /// <returns>An observable that can observe the side-effects of a process</returns> 
-        public static IObservable<ProcessSignal> CreateFromScriptFile(string fileName, string arguments = null, Action<Process> customizer = null)
+        public static IObservable<ProcessSignal> CreateFromScriptFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName));
             var argStr = "";
             var argStrBuilder = new StringBuilder();
-            argStrBuilder.Append($"/C {fileName}");
+            argStrBuilder.Append($"/C \"\"{fileName}\"\"");
             if (arguments != null)
                 argStrBuilder.Append($" {arguments}");
             argStr = argStrBuilder.ToString();
@@ -72,7 +76,7 @@ namespace ObservableProcess
                 };
                 customizer?.Invoke(process);
                 return process;
-            });
+            }, failfast: failfast);
         }
 
         /// <summary>
@@ -81,9 +85,11 @@ namespace ObservableProcess
         /// <param name="fileName">Executable file to run</param>
         /// <param name="arguments">Optional arguments to script</param>
         /// <param name="customizer">Optional process customizer</param>
+        /// <param name="failfast">If true exceptions at subscription time are rethrown, 
+        /// otherwise subscription exceptions are materialized as an OnError call.</param>
         /// <exception cref="ArgumentOutOfRangeException">If the fileName is invalid</exception>
         /// <returns>An observable that can observe the side-effects of a process</returns> 
-        public static IObservable<ProcessSignal> CreateFromExecutableFile(string fileName, string arguments = null, Action<Process> customizer = null)
+        public static IObservable<ProcessSignal> CreateFromExecutableFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName));
@@ -110,10 +116,10 @@ namespace ObservableProcess
                 };
                 customizer?.Invoke(process);
                 return process;
-            });
+            }, failfast: failfast);
         }
 
-        private static IObservable<ProcessSignal> Create(Func<Process> factory)
+        private static IObservable<ProcessSignal> Create(Func<Process> factory, bool failfast)
         {
             return Observable.Create<ProcessSignal>(observer =>
             {
@@ -198,12 +204,6 @@ namespace ObservableProcess
                 // whenever the subscription is disposed by whatever means
                 subscription.Add(Disposable.Create(observer.OnCompleted));
 
-                // Ensures the streams are closed when disposing
-                subscription.Add(Disposable.Create(() =>
-                {
-                    //process.Dispose();
-                }));
-
                 // Start the process
                 try
                 {
@@ -217,6 +217,8 @@ namespace ObservableProcess
                     // Exception => IObservable.OnError
                     var ctx = new Exception("Error subscribing to ProcessObservable", ex);
                     ctx.Data.Add("Process", process);
+                    if (failfast)
+                        throw ctx;
                     observer.OnError(ctx);
                 }
 
