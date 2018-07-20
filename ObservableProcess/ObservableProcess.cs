@@ -9,6 +9,8 @@ using ObservableProcess.ProcessExtensions;
 
 namespace ObservableProcess
 {
+    // TODO ProcessObservableBuilder
+
     /// <summary>
     /// Static methods to create observable processes.
     /// </summary>
@@ -18,7 +20,7 @@ namespace ObservableProcess
         /// Creates a new observable that can observe Process side-effects of an executable or script.
         /// </summary>
         /// <param name="fileName">File to run</param>
-        /// <param name="arguments">Optional arguments to executable or script</param>
+        /// <param name="arguments">Optional arguments to executable or script; arguments must be escaped as per normal cmd rules</param>
         /// <param name="customizer">Optional process customizer</param>
         /// <param name="failfast">If true exceptions at subscription time are rethrown, 
         /// otherwise subscription exceptions are materialized as an OnError call.</param>
@@ -37,7 +39,7 @@ namespace ObservableProcess
         /// Creates a new observable that can observe Process side-effects of a script.
         /// </summary>
         /// <param name="fileName">Script file to run</param>
-        /// <param name="arguments">Optional arguments to executable</param>
+        /// <param name="arguments">Optional arguments to executable; arguments must be escaped as per normal cmd rules</param>
         /// <param name="customizer">Optional process customizer</param>
         /// <param name="failfast">If true exceptions at subscription time are rethrown, 
         /// otherwise subscription exceptions are materialized as an OnError call.</param>
@@ -49,9 +51,10 @@ namespace ObservableProcess
                 throw new ArgumentOutOfRangeException(nameof(fileName));
             var argStr = "";
             var argStrBuilder = new StringBuilder();
-            argStrBuilder.Append($"/C \"\"{fileName}\"\"");
-            if (arguments != null)
-                argStrBuilder.Append($" {arguments}");
+            if (string.IsNullOrWhiteSpace(arguments))
+                argStrBuilder.Append($"/C \"\"{fileName}\"\"");
+            else
+                argStrBuilder.Append($"/C \"\"{fileName} {arguments}\"\"");
             argStr = argStrBuilder.ToString();
 
             // Need to wrap the process creation -- otherwise the same process will be setup 
@@ -83,7 +86,7 @@ namespace ObservableProcess
         /// Creates a new observable that can observe Process side-effects.
         /// </summary>
         /// <param name="fileName">Executable file to run</param>
-        /// <param name="arguments">Optional arguments to script</param>
+        /// <param name="arguments">Optional arguments to script; arguments must be escaped as per normal cmd rules</param>
         /// <param name="customizer">Optional process customizer</param>
         /// <param name="failfast">If true exceptions at subscription time are rethrown, 
         /// otherwise subscription exceptions are materialized as an OnError call.</param>
@@ -123,6 +126,8 @@ namespace ObservableProcess
         {
             return Observable.Create<ProcessSignal>(observer =>
             {
+                // TODO is the process hanging?
+
                 // Create the new process
                 Process process = factory();
 
@@ -142,11 +147,7 @@ namespace ObservableProcess
                     process.DisposedObservable().Subscribe(
                         onNext: _ =>
                         {
-                            observer.OnNext(new ProcessSignal()
-                            {
-                                ProcessId = procId,
-                                Type = ProcessSignalClassifier.Disposed,
-                            });
+                            observer.OnNext(ProcessSignal.FromDisposed(procId.Value));
                             subscription.Dispose();
                         }
                     );
@@ -156,12 +157,7 @@ namespace ObservableProcess
                     process.ExitedObservable().Subscribe(
                         onNext: _ =>
                         {
-                            observer.OnNext(new ProcessSignal()
-                            {
-                                ProcessId = procId,
-                                Type = ProcessSignalClassifier.Exited,
-                                ExitCode = process.ExitCode
-                            });
+                            observer.OnNext(ProcessSignal.FromExited(procId.Value, process.ExitCode));
                             subscription.Dispose();
                         }
                     );
@@ -171,12 +167,7 @@ namespace ObservableProcess
                     process.OutputDataReceivedObservable().Where(ev => ev.EventArgs.Data != null).Subscribe(
                         onNext: ev =>
                         {
-                            observer.OnNext(new ProcessSignal()
-                            {
-                                ProcessId = procId,
-                                Type = ProcessSignalClassifier.Output,
-                                Data = ev.EventArgs.Data
-                            });
+                            observer.OnNext(ProcessSignal.FromOutput(procId.Value, ev.EventArgs.Data));
                         }
                     );
 
@@ -185,12 +176,9 @@ namespace ObservableProcess
                     process.ErrorDataReceivedObservable().Where(ev => ev.EventArgs.Data != null).Subscribe(
                         onNext: ev =>
                         {
-                            observer.OnNext(new ProcessSignal()
-                            {
-                                ProcessId = procId,
-                                Type = ProcessSignalClassifier.Error,
-                                Data = ev.EventArgs.Data
-                            });
+                            // In the case where a subscription error happened, the process id does not exist
+                            // - that scenario is modelled as an OnError signal.
+                            observer.OnNext(ProcessSignal.FromError(procId, ev.EventArgs.Data));
                         }
                     );
 
@@ -229,6 +217,34 @@ namespace ObservableProcess
                 // The result is a disposable object representing the subscription
                 return subscription;
             });
+        }
+
+        private static string EscapeArgument(string argument)
+        {
+            /*
+             *   If /C or /K is specified, then the remainder of the command line after
+             *   the switch is processed as a command line, where the following logic is
+             *   used to process quote (") characters:
+             *
+             *      1.  If all of the following conditions are met, then quote characters
+             *          on the command line are preserved:
+             *
+             *          - no /S switch
+             *          - exactly two quote characters
+             *          - no special characters between the two quote characters,
+             *            where special is one of: &<>()@^|
+             *          - there are one or more whitespace characters between the
+             *            two quote characters
+             *          - the string between the two quote characters is the name
+             *            of an executable file.
+             *
+             *      2.  Otherwise, old behavior is to see if the first character is
+             *          a quote character and if so, strip the leading character and
+             *          remove the last quote character on the command line, preserving
+             *          any text after the last quote character.
+            */
+            //const string SpecialCharacters = "&<> ()@^|";
+            throw new NotImplementedException();
         }
     }
 }
