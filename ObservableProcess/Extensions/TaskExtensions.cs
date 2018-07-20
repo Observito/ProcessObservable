@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -38,27 +39,25 @@ namespace ObservableProcess
                     // Cancel task if needed
                     token?.ThrowIfCancellationRequested();
 
+                    // Collect process id
+                    processId = processId ?? signal.ProcessId;
+
                     // Collect result info
                     switch (signal.Type)
                     {
                         case ProcessSignalClassifier.Started:
-                            processId = processId ?? signal.ProcessId;
                             break;
                         case ProcessSignalClassifier.Exited:
-                            processId = processId ?? signal.ProcessId;
                             exitCode = signal.ExitCode;
                             break;
                         case ProcessSignalClassifier.Disposed:
-                            processId = processId ?? signal.ProcessId;
                             isDisposed = true;
                             break;
                         case ProcessSignalClassifier.Output:
-                            processId = processId ?? signal.ProcessId;
                             data.Add(new DataLine(DataLineType.Output, signal.Data, DateTime.Now, counter));
                             counter++;
                             break;
                         case ProcessSignalClassifier.Error:
-                            processId = processId ?? signal.ProcessId;
                             data.Add(new DataLine(DataLineType.Error, signal.Data, DateTime.Now, counter));
                             counter++;
                             break;
