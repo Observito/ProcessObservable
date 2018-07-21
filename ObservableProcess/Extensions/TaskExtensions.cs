@@ -20,6 +20,21 @@ namespace ObservableProcess
         /// <param name="token">Optional cancellation token</param>
         /// <param name="progress">Optional progress to report to</param>
         /// <returns>Process completion data</returns>
+        public static Task<ProcessCompletion> StartTask(this IObservable<ProcessSignal> observable, CancellationToken? token = null, IProgress<ProcessSignal> progress = null)
+        {
+            var task = observable.AsTask();
+            task.Start();
+            return task;
+        }
+
+        /// <summary>
+        /// Convert the process observable to a process completion task.
+        /// The task can optionally report progress and will upon completion return collected completion data.
+        /// </summary>
+        /// <param name="observable">The process observable</param>
+        /// <param name="token">Optional cancellation token</param>
+        /// <param name="progress">Optional progress to report to</param>
+        /// <returns>Process completion data</returns>
         public static Task<ProcessCompletion> AsTask(this IObservable<ProcessSignal> observable, CancellationToken? token = null, IProgress<ProcessSignal> progress = null)
         {
             return new Task<ProcessCompletion>(() =>
@@ -34,40 +49,48 @@ namespace ObservableProcess
                 var data = new List<DataLine>();
                 var counter = 0;
 
-                foreach (var signal in observable.ToEnumerable())
+                Exception exc = null;
+                try
                 {
-                    // Cancel task if needed
-                    token?.ThrowIfCancellationRequested();
-
-                    // Collect process id
-                    processId = processId ?? signal.ProcessId;
-
-                    // Collect result info
-                    switch (signal.Type)
+                    foreach (var signal in observable.ToEnumerable())
                     {
-                        case ProcessSignalClassifier.Started:
-                            break;
-                        case ProcessSignalClassifier.Exited:
-                            exitCode = signal.ExitCode;
-                            break;
-                        case ProcessSignalClassifier.Disposed:
-                            isDisposed = true;
-                            break;
-                        case ProcessSignalClassifier.Output:
-                            data.Add(new DataLine(DataLineType.Output, signal.Data, DateTime.Now, counter));
-                            counter++;
-                            break;
-                        case ProcessSignalClassifier.Error:
-                            data.Add(new DataLine(DataLineType.Error, signal.Data, DateTime.Now, counter));
-                            counter++;
-                            break;
-                    }
+                        // Cancel task if needed
+                        token?.ThrowIfCancellationRequested();
 
-                    // Report task progress if requested
-                    if (progress != null)
-                    {
-                        Task.Run(() => progress.Report(signal));
+                        // Collect process id
+                        processId = processId ?? signal.ProcessId;
+
+                        // Collect result info
+                        switch (signal.Type)
+                        {
+                            case ProcessSignalClassifier.Started:
+                                break;
+                            case ProcessSignalClassifier.Exited:
+                                exitCode = signal.ExitCode;
+                                break;
+                            case ProcessSignalClassifier.Disposed:
+                                isDisposed = true;
+                                break;
+                            case ProcessSignalClassifier.Output:
+                                data.Add(new DataLine(DataLineType.Output, signal.Data, DateTime.Now, counter));
+                                counter++;
+                                break;
+                            case ProcessSignalClassifier.Error:
+                                data.Add(new DataLine(DataLineType.Error, signal.Data, DateTime.Now, counter));
+                                counter++;
+                                break;
+                        }
+
+                        // Report task progress if requested
+                        if (progress != null)
+                        {
+                            Task.Run(() => progress.Report(signal));
+                        }
                     }
+                }
+                catch (Exception ex) // OnError case
+                {
+                    exc = ex;
                 }
 
                 // Completed, return result
@@ -75,6 +98,7 @@ namespace ObservableProcess
                     processId: processId, 
                     exitCode: exitCode, 
                     isDisposed: isDisposed, 
+                    error: exc,
                     data: data.ToArray());
             });
         }

@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Text;
 
 namespace ObservableProcess
@@ -11,11 +12,12 @@ namespace ObservableProcess
         /// <summary>
         /// Constructor.
         /// </summary>
-        public ProcessCompletion(int? processId, int? exitCode, bool isDisposed, DataLine[] data)
+        public ProcessCompletion(int? processId, int? exitCode, bool isDisposed, Exception error, DataLine[] data)
         {
             ProcessId = processId;
             ExitCode = exitCode;
             IsDisposed = isDisposed;
+            Error = error;
             _data = data;
         }
 
@@ -37,6 +39,11 @@ namespace ObservableProcess
         public bool IsDisposed { get; }
 
         /// <summary>
+        /// Was an error thrown?
+        /// </summary>
+        public Exception Error { get; }
+
+        /// <summary>
         /// Output data.
         /// </summary>
         public DataLine[] Data => _data.ToArray();
@@ -51,6 +58,14 @@ namespace ObservableProcess
                 foreach (var line in _data)
                     sb.AppendLine($" {line}");
                 sb.AppendLine("}");
+            }
+            if (Error != null)
+            {
+                sb.AppendLine("====================");
+                sb.AppendLine("Error:");
+                sb.AppendLine("====================");
+                sb.AppendLine(Error.ToString());
+                sb.AppendLine("====================");
             }
             return sb.ToString();
         }

@@ -77,7 +77,6 @@ namespace LoremIpsum
                 {
                     Console.Error.WriteLine(LoremIpsumLines[i]);
                 }
-                return -1;
             }
 
             if (args.Any(arg => arg.ToLowerInvariant().StartsWith("/output:")))
@@ -103,7 +102,6 @@ namespace LoremIpsum
                 {
                     Console.Out.WriteLine(LoremIpsumLines[i]);
                 }
-                return 0;
             }
 
             if (args.Any(x => x.Contains("rand")))

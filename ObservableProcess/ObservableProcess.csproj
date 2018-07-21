@@ -52,9 +52,10 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="IProgress.cs" />
     <Compile Include="Types\DataLineType.cs" />
     <Compile Include="Types\DataLine.cs" />
-    <Compile Include="ObservableProcess.cs" />
+    <Compile Include="ProcessObservable.cs" />
     <Compile Include="Types\ProcessCompletion.cs" />
     <Compile Include="Extensions\ProcessExtensions.cs" />
     <Compile Include="Types\ProcessSignal.cs" />
