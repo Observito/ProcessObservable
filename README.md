@@ -1,19 +1,31 @@
 # ObservableProcess
-Observable abstraction for processes for .NET. Treat your executable or script processes as a push 
-stream of information (IObservable). Written in C#.
+Observable abstraction for processes for .NET. Treat your executable or script process as a push 
+stream of information (IObservable<ProcessSignal>) or a task (Task<ProcessCompletion>). Both
+executable files, scripts and other file types (with associated programs) can be observed or 
+awaited asynchronously.
 
-## Details
-ObservableProcess makes it possible to listen to processes like any other event source (IObservable). 
-The initial version captures output and error messages as well as exited and disposed events as observable
-signals using the same observable. It is possible to observe both executables, console applications as well
-as certain other files like .sln files.
+## Task syntax
 
-![Alt Text](example.gif)
+The simplest use is using async/await syntax:
 
-## Usage
+```csharp
+var result = await ProcessObservable.TryCreateFromFile("LoremIpsum.exe").StartTask();
+// ...
+```
+
+![Start task to record process signals. Use record upon completion.](Documentation/Assets/LinqPadDemo_TryCreateFromFile_StartTask.gif)
+
+
+## Observable syntax
+
+A more streaming API is by observing the process as it happens, by creating an IObservable<ProcessSignal>:
+
 ```csharp
 var observable = ProcessObservable.TryCreateFromFile("LoremIpsum.exe");
+// ...
 ```
+
+![Create observable, that can be queried and dumped in e.g. LINQPad](Documentation/Assets/LinqPadDemo_TryCreateFromFile)
 
 ## NuGet
 
