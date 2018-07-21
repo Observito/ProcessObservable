@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>Exoteric-ObservableProcess</id>
-    <version>1.0.1</version>
+    <version>1.1.0</version>
     <title>ObservableProcess</title>
     <authors>Bent Rasmussen</authors>
     <owners>Bent Rasmussen (metapace)</owners>
@@ -10,10 +10,10 @@
     <projectUrl>https://github.com/exoteric/ObservableProcess</projectUrl>
     <!--<iconUrl>http://ICON_URL_HERE_OR_DELETE_THIS_LINE</iconUrl>-->
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>Observe processes like a push stream of data. Orchestrate and work declaratively with processes.</description>
-    <releaseNotes>Initial release.</releaseNotes>
+    <description>Observe processes like a push stream of data or await their results. Orchestrate and work declaratively with processes.</description>
+    <releaseNotes>Test cases and more helper methods.</releaseNotes>
     <copyright>Copyright 2018 Bent Rasmussen</copyright>
-    <tags>process observable abstraction events ergonomics</tags>
+    <tags>process observable async abstraction events ergonomics</tags>
 	<dependencies>
 		<dependency id="System.Reactive" version="4.0.0" />
 	</dependencies>
