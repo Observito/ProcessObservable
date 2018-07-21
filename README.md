@@ -25,7 +25,7 @@ var observable = ProcessObservable.TryCreateFromFile("LoremIpsum.exe");
 // ...
 ```
 
-![Create observable, that can be queried and dumped in e.g. LINQPad](Documentation/Assets/LinqPadDemo_TryCreateFromFile)
+![Create observable, that can be queried and dumped in e.g. LINQPad](Documentation/Assets/LinqPadDemo_TryCreateFromFile.gif)
 
 ## NuGet
 
