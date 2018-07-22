@@ -28,6 +28,9 @@ namespace ObservableProcess
         /// <returns>An observable that can observe the side-effects of a process</returns> 
         public static Task<ProcessCompletion> StartTaskFromFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false, CancellationToken? token = null, IProgress<ProcessSignal> progress = null)
         {
+            if (string.IsNullOrWhiteSpace(fileName))
+                throw new ArgumentOutOfRangeException(nameof(fileName));
+
             var io = TryCreateFromFile(fileName, arguments, customizer, failfast);
             return io.StartTask(token, progress);
         }
@@ -67,6 +70,9 @@ namespace ObservableProcess
         /// <returns>An observable that can observe the side-effects of a process</returns> 
         public static IObservable<ProcessSignal> CreateFromScriptFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
         {
+            if (string.IsNullOrWhiteSpace(fileName))
+                throw new ArgumentOutOfRangeException(nameof(fileName));
+
             return CreateFromProcessFactory(() =>
             {
                 var proc = ProcessCreation.CreateFromScriptFile(fileName, arguments);
@@ -102,11 +108,16 @@ namespace ObservableProcess
         /// Creates a new process observable from a process factory. Note that this method does not try to auto-correct
         /// its input. The process factory must enable 
         /// </summary>
-        /// <param name="factory"></param>
-        /// <param name="failfast"></param>
-        /// <returns></returns>
+        /// <param name="factory">The process factory</param>
+        /// <param name="failfast">If true then exceptions at process start time will be propagated; if false they will be materialized as an OnError case</param>
+        /// <exception cref="ArgumentNullException">If the process factory is null</exception>
+        /// <exception cref="Exception">If failfast and an eror occurs during process start (during subscription)</exception>
+        /// <returns>The created process observable</returns>
         public static IObservable<ProcessSignal> CreateFromProcessFactory(Func<Process> factory, bool failfast)
         {
+            if (factory == null)
+                throw new ArgumentNullException(nameof(factory));
+
             return Observable.Create<ProcessSignal>(observer =>
             {
                 // Create the new process
@@ -197,9 +208,9 @@ namespace ObservableProcess
                         throw ctx;
                     // Exception => IObservable.OnError
                     observer.OnError(ctx);
-                    subscriptions.Dispose();
 
-                    subscriptions.Clear();
+                    // Dispose all subscriptions
+                    subscriptions.Dispose();
 
                     return subscriptions;
                 }
