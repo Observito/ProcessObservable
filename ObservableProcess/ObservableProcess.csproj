@@ -52,6 +52,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ProcessCreation.cs" />
     <Compile Include="Types\DataLineType.cs" />
     <Compile Include="Types\DataLine.cs" />
     <Compile Include="ProcessObservable.cs" />

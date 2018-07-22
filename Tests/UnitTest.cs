@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
@@ -32,11 +34,13 @@ namespace Tests
             var obs = ProcessObservable.TryCreateFromFile("LoremIpsum.exe", $"/output:{n}");
             var results = obs.ToEnumerable().ToArray();
 
+            Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalClassifier.Started), $"Expected first signal classifier={ProcessSignalClassifier.Started}");
             Assert.IsTrue(results.Any(__ => __.Type == ProcessSignalClassifier.Exited && __.ExitCode == 0), "Expected at least one signal with exitcode=0");
             Assert.IsTrue(results.All(__ => __.Type != ProcessSignalClassifier.Disposed), "Unexpected dispose");
             Assert.IsTrue(results.Any(__ => __.ProcessId != null), "Expected to find a process id");
             Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalClassifier.Output) == n, $"Expected to find {n} output lines");
             Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalClassifier.Error) == 0, $"Expected to find 0 errors lines");
+            Assert.IsTrue(results.EndsWith(__ => __.Type == ProcessSignalClassifier.Exited || __.Type == ProcessSignalClassifier.Disposed), $"Expected Last signal classifier={ProcessSignalClassifier.Exited} or {ProcessSignalClassifier.Disposed}");
             var c = 0;
             foreach (var result in results)
             {
@@ -75,11 +79,13 @@ namespace Tests
             var obs = ProcessObservable.TryCreateFromFile("LoremIpsum.exe", $"/error:{n}");
             var results = obs.ToEnumerable().ToArray();
 
+            Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalClassifier.Started), $"Expected first signal classifier={ProcessSignalClassifier.Started}");
             Assert.IsTrue(results.Any(__ => __.Type == ProcessSignalClassifier.Exited && __.ExitCode != null), "Expected at least one signal with exitcode");
             Assert.IsTrue(results.All(__ => __.Type != ProcessSignalClassifier.Disposed), "Unexpected dispose");
             Assert.IsTrue(results.Any(__ => __.ProcessId != null), "Expected to find a process id");
             Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalClassifier.Error) == n, $"Expected to find {n} error lines");
             Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalClassifier.Output) == 0, $"Expected to find 0 output lines");
+            Assert.IsTrue(results.EndsWith(__ => __.Type == ProcessSignalClassifier.Exited || __.Type == ProcessSignalClassifier.Disposed), $"Expected Last signal classifier={ProcessSignalClassifier.Exited} or {ProcessSignalClassifier.Disposed}");
             var c = 0;
             foreach (var result in results)
             {
@@ -118,11 +124,13 @@ namespace Tests
             var obs = ProcessObservable.TryCreateFromFile("LoremIpsum.exe", $"/output:{errorCount} /error:{errorCount}");
             var results = obs.ToEnumerable().ToArray();
 
+            Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalClassifier.Started), $"Expected first signal classifier={ProcessSignalClassifier.Started}");
             Assert.IsTrue(results.Any(__ => __.Type == ProcessSignalClassifier.Exited && __.ExitCode != null), "Expected at least one signal with exitcode");
             Assert.IsTrue(results.All(__ => __.Type != ProcessSignalClassifier.Disposed), "Unexpected dispose");
             Assert.IsTrue(results.Any(__ => __.ProcessId != null), "Expected to find a process id");
             Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalClassifier.Error) == errorCount, $"Expected to find {errorCount} error lines");
             Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalClassifier.Output) == errorCount, $"Expected to find {outputCount} output lines");
+            Assert.IsTrue(results.EndsWith(__ => __.Type == ProcessSignalClassifier.Exited || __.Type == ProcessSignalClassifier.Disposed), $"Expected Last signal classifier={ProcessSignalClassifier.Exited} or {ProcessSignalClassifier.Disposed}");
         }
 
         [TestMethod]
@@ -178,5 +186,26 @@ namespace Tests
         // TODO failfast test
         // TODO cancellation token test
         // TODO cmd script parameter test
+    }
+
+    /// <summary>
+    /// Sequence testability extensions.
+    /// Query methods that assist in testing the correctness of sequence generators.
+    /// </summary>
+    public static class EnumerableTestabilityExtensions
+    {
+        /// <summary>
+        /// Does the sequence start with an element satisfying the predicate?
+        /// If the sequence is empty the answer is no.
+        /// </summary>
+        public static bool StartsWith<T>(this IEnumerable<T> source, Func<T, bool> predicate) =>
+            source.Any() && predicate(source.First());
+
+        /// <summary>
+        /// Does the sequence end with an element satisfying the predicate?
+        /// If the sequence is empty the answer is no.
+        /// </summary>
+        public static bool EndsWith<T>(this IEnumerable<T> source, Func<T, bool> predicate) =>
+            source.Any() && predicate(source.Last());
     }
 }
