@@ -25,14 +25,14 @@ namespace ObservableProcess
         /// <param name="progress">Optional progress reporting</param>
         /// <param name="token">Optional cancellation token</param>
         /// <exception cref="ArgumentOutOfRangeException">If the file type is not supported or the file type cannot be determined</exception>
-        /// <returns>An observable that can observe the side-effects of a process</returns> 
-        public static Task<ProcessCompletion> StartTaskFromFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false, CancellationToken? token = null, IProgress<ProcessSignal> progress = null)
+        /// <returns>The new running task</returns>
+        public static Task<ProcessCompletion> RunAsync(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false, CancellationToken? token = null, IProgress<ProcessSignal> progress = null)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName));
 
-            var io = TryCreateFromFile(fileName, arguments, customizer, failfast);
-            return io.StartTask(token, progress);
+            var io = FromFile(fileName, arguments, customizer, failfast);
+            return io.RunAsync(token, progress);
         }
 
         /// <summary>
@@ -44,18 +44,13 @@ namespace ObservableProcess
         /// <param name="failfast">If true exceptions at subscription time are rethrown, 
         /// otherwise subscription exceptions are materialized as an OnError call.</param>
         /// <exception cref="ArgumentOutOfRangeException">If the file type is not supported or the file type cannot be determined</exception>
-        /// <returns>An observable that can observe the side-effects of a process</returns> 
-        public static IObservable<ProcessSignal> TryCreateFromFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
+        /// <returns>The new observable</returns>
+        public static IObservable<ProcessSignal> FromFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName));
 
-            return CreateFromProcessFactory(() =>
-            {
-                var proc = ProcessCreation.TryCreateFromFile(fileName, arguments);
-                customizer?.Invoke(proc);
-                return proc;
-            }, failfast: failfast);
+            return ProcessDescriptor.FromFile(fileName, arguments).ToObservable(customizer, failfast);
         }
 
         /// <summary>
@@ -67,18 +62,13 @@ namespace ObservableProcess
         /// <param name="failfast">If true exceptions at subscription time are rethrown, 
         /// otherwise subscription exceptions are materialized as an OnError call.</param>
         /// <exception cref="ArgumentOutOfRangeException">If the fileName is invalid</exception>
-        /// <returns>An observable that can observe the side-effects of a process</returns> 
-        public static IObservable<ProcessSignal> CreateFromScriptFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
+        /// <returns>The new observable</returns>
+        public static IObservable<ProcessSignal> FromAssociatedFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName));
 
-            return CreateFromProcessFactory(() =>
-            {
-                var proc = ProcessCreation.CreateFromScriptFile(fileName, arguments);
-                customizer?.Invoke(proc);
-                return proc;
-            }, failfast: failfast);
+            return ProcessDescriptor.FromAssociatedFile(fileName, arguments).ToObservable(customizer, failfast);
         }
 
         /// <summary>
@@ -90,19 +80,21 @@ namespace ObservableProcess
         /// <param name="failfast">If true exceptions at subscription time are rethrown, 
         /// otherwise subscription exceptions are materialized as an OnError call.</param>
         /// <exception cref="ArgumentOutOfRangeException">If the fileName is invalid</exception>
-        /// <returns>An observable that can observe the side-effects of a process</returns> 
-        public static IObservable<ProcessSignal> CreateFromExecutableFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
+        /// <returns>The new observable</returns>
+        public static IObservable<ProcessSignal> FromExecutableFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName));
 
-            return CreateFromProcessFactory(() =>
+            return FromProcessSource(() =>
             {
-                var proc = ProcessCreation.CreateFromExecutableFile(fileName, arguments);
+                var proc = ProcessDescriptor.FromExecutableFile(fileName, arguments).ToProcess();
                 customizer?.Invoke(proc);
                 return proc;
             }, failfast: failfast);
         }
+
+
 
         /// <summary>
         /// Creates a new process observable from a process factory. Note that this method does not try to auto-correct
@@ -110,121 +102,155 @@ namespace ObservableProcess
         /// </summary>
         /// <param name="factory">The process factory</param>
         /// <param name="failfast">If true then exceptions at process start time will be propagated; if false they will be materialized as an OnError case</param>
+        /// <exception cref="ArgumentNullException">If the start info is null</exception>
+        /// <returns>The new observable</returns>
+        public static IObservable<ProcessSignal> ToObservable(this ProcessStartInfo info, Action<Process> customizer = null, bool failfast = false)
+        {
+            if (info == null)
+                throw new ArgumentNullException(nameof(info));
+
+            return FromProcessSource(() => info.ToProcess(customizer), failfast);
+        }
+
+        /// <summary>
+        /// Creates a new process observable from a process factory. Note that this method does not try to auto-correct
+        /// its input. The process factory must enable 
+        /// </summary>
+        /// <param name="source">The process factory</param>
+        /// <param name="failfast">If true then exceptions at process start time will be propagated; if false they will be materialized as an OnError case</param>
         /// <exception cref="ArgumentNullException">If the process factory is null</exception>
         /// <exception cref="Exception">If failfast and an eror occurs during process start (during subscription)</exception>
         /// <returns>The created process observable</returns>
-        public static IObservable<ProcessSignal> CreateFromProcessFactory(Func<Process> factory, bool failfast)
+        public static IObservable<ProcessSignal> FromProcessSource(Func<Process> source, bool failfast = false)
         {
-            if (factory == null)
-                throw new ArgumentNullException(nameof(factory));
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
 
-            return Observable.Create<ProcessSignal>(observer =>
+            return System.Reactive.Linq.Observable.Create<ProcessSignal>((IObserver<ProcessSignal> observer) =>
             {
                 // Create the new process
-                Process process = factory();
+                var process = source();
+
+                // Ensure we can subscribe to process events
+                process.EnableRaisingEvents = true;
 
                 // Setup a subscription result that captures inner subscriptions to events so they can all
                 // be disposed together by the subcriber
                 var subscriptions = new CompositeDisposable();
 
-                // Need to capture the process id, so it can be returned in an event as metadata even when 
-                // the subscription is disposed 
-                int? procId = null;
-
-                //Test pre-emptive disposal:
-                //Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(t => { proc.Dispose(); });
-
-                // Subscribe to the Disposed event
-                subscriptions.Add(
-                    process.DisposedObservable().Subscribe(
-                        onNext: _ =>
-                        {
-                            observer.OnNext(ProcessSignal.FromDisposed(procId.Value));
-                            subscriptions.Dispose();
-                        }
-                    )
-                );
-
-                // Subscribe to the Exited event
-                subscriptions.Add(
-                    process.ExitedObservable().Subscribe(
-                        onNext: _ =>
-                        {
-                            observer.OnNext(ProcessSignal.FromExited(procId.Value, process.ExitCode));
-                            subscriptions.Dispose();
-                        }
-                    )
-                );
-
-                // Subscribe to the OutputDataReceived event
-                if (process.StartInfo.RedirectStandardOutput)
-                {
-                    subscriptions.Add(
-                        process.OutputDataReceivedObservable().Where(ev => ev.EventArgs.Data != null)
-                        .Subscribe(
-                            onNext: ev =>
-                            {
-                                observer.OnNext(ProcessSignal.FromOutput(procId.Value, ev.EventArgs.Data));
-                            }
-                        )
-                    );
-                }
-
-                // Subscribe to the ErrorDataReceived event
-                if (process.StartInfo.RedirectStandardError)
-                {
-                    subscriptions.Add(
-                        process.ErrorDataReceivedObservable().Where(ev => ev.EventArgs.Data != null).Subscribe(
-                            onNext: ev =>
-                            {
-                                // In the case where a subscription error happened, the process id does not exist
-                                // - that scenario is modelled as an OnError signal.
-                                observer.OnNext(ProcessSignal.FromError(procId, ev.EventArgs.Data));
-                            }
-                        )
-                    );
-                }
-
-                // Add a notification to the subscriber that the subscription is completed 
-                // whenever the subscription is disposed by whatever means
-                subscriptions.Add(Disposable.Create(observer.OnCompleted));
-
-                // Attempt to start the process
                 try
                 {
-                    process.Start();
+                    // Need to capture the process id, so it can be returned in an event as metadata even when 
+                    // the subscription is disposed 
+                    int? procId = null;
 
-                    // Capture the process id -- cannot get when disposed
-                    procId = process.Id;
+                    //Test pre-emptive disposal:
+                    //Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(t => { proc.Dispose(); });
 
-                    // Inform observer
-                    observer.OnNext(ProcessSignal.FromStarted(procId.Value));
-                }
-                catch (Exception ex)
-                {
-                    var ctx = new Exception("Error subscribing to ProcessObservable", ex);
-                    ctx.Data.Add("ProcessId", procId);
-                    if (failfast)
-                        throw ctx;
-                    // Exception => IObservable.OnError
-                    observer.OnError(ctx);
+                    // Subscribe to the Disposed event
+                    subscriptions.Add(
+                        process.DisposedObservable().Subscribe(
+                            onNext: (System.Reactive.EventPattern<object> _) =>
+                            {
+                                observer.OnNext(ProcessSignal.FromDisposed(procId.Value));
+                                subscriptions.Dispose();
+                            }
+                        )
+                    );
 
-                    // Dispose all subscriptions
-                    subscriptions.Dispose();
+                    // Subscribe to the Exited event
+                    subscriptions.Add(
+                        process.ExitedObservable().Subscribe(
+                            onNext: (System.Reactive.EventPattern<object> _) =>
+                            {
+                                observer.OnNext(ProcessSignal.FromExited(procId.Value, process.ExitCode));
+                                subscriptions.Dispose();
+                            }
+                        )
+                    );
 
+                    // Subscribe to the OutputDataReceived event
+                    if (process.StartInfo.RedirectStandardOutput)
+                    {
+                        subscriptions.Add(
+                            process.OutputDataReceivedObservable().Where((System.Reactive.EventPattern<DataReceivedEventArgs> ev) => ev.EventArgs.Data != null)
+                            .Subscribe(
+                                onNext: (System.Reactive.EventPattern<DataReceivedEventArgs> ev) =>
+                                {
+                                    observer.OnNext(ProcessSignal.FromOutput(procId.Value, ev.EventArgs.Data));
+                                }
+                            )
+                        );
+                    }
+
+                    // Subscribe to the ErrorDataReceived event
+                    if (process.StartInfo.RedirectStandardError)
+                    {
+                        subscriptions.Add(
+                            process.ErrorDataReceivedObservable().Where((System.Reactive.EventPattern<DataReceivedEventArgs> ev) => ev.EventArgs.Data != null).Subscribe(
+                                onNext: (System.Reactive.EventPattern<DataReceivedEventArgs> ev) =>
+                                {
+                                    // In the case where a subscription error happened, the process id does not exist
+                                    // - that scenario is modelled as an OnError signal.
+                                    observer.OnNext(ProcessSignal.FromError(procId, ev.EventArgs.Data));
+                                }
+                            )
+                        );
+                    }
+
+                    // Add a notification to the subscriber that the subscription is completed 
+                    // whenever the subscription is disposed by whatever means
+                    subscriptions.Add(Disposable.Create(observer.OnCompleted));
+
+                    // Attempt to start the process
+                    try
+                    {
+                        process.Start();
+
+                        // Capture the process id -- cannot get when disposed
+                        procId = process.Id;
+
+                        // Inform observer
+                        observer.OnNext(ProcessSignal.FromStarted(procId.Value));
+                    }
+                    catch (Exception ex)
+                    {
+                        var ctx = new Exception("Error subscribing to ProcessObservable", ex);
+                        ctx.Data.Add("ProcessId", procId);
+                        if (failfast)
+                        {
+                            // Propagate error
+                            throw ctx;
+                        }
+
+                        // Exception => IObservable.OnError
+                        observer.OnError(ctx);
+
+                        // Dispose all subscriptions
+                        subscriptions.Dispose();
+
+                        return subscriptions;
+                    }
+
+                    // Start capturing standard output asynchronously
+                    if (process.StartInfo.RedirectStandardOutput)
+                        process.BeginOutputReadLine();
+
+                    // Start capturing the standard error asynchronously
+                    if (process.StartInfo.RedirectStandardError)
+                        process.BeginErrorReadLine();
+
+                    // The result is a disposable object representing the subscription
                     return subscriptions;
                 }
+                catch
+                {
+                    // Dispose subscriptions
+                    subscriptions.Dispose();
 
-                // Start capturing standard output asynchronously
-                if (process.StartInfo.RedirectStandardOutput)
-                    process.BeginOutputReadLine();
-
-                // Start capturing the standard error asynchronously
-                if (process.StartInfo.RedirectStandardError)
-                    process.BeginErrorReadLine();
-
-                // The result is a disposable object representing the subscription
-                return subscriptions;
+                    // Propagate error
+                    throw;
+                }
             });
         }
     }

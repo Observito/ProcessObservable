@@ -31,7 +31,7 @@ namespace Tests
         public void ObservableOutputScenario()
         {
             const int n = 5;
-            var obs = ProcessObservable.TryCreateFromFile("LoremIpsum.exe", $"/output:{n}");
+            var obs = ProcessObservable.FromFile("LoremIpsum.exe", $"/output:{n}");
             var results = obs.ToEnumerable().ToArray();
 
             Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalClassifier.Started), $"Expected first signal classifier={ProcessSignalClassifier.Started}");
@@ -56,7 +56,7 @@ namespace Tests
         public async Task TaskOutputScenario()
         {
             const int n = 5;
-            var result = await ProcessObservable.TryCreateFromFile("LoremIpsum.exe", $"/output:{n}").StartTask();
+            var result = await ProcessObservable.FromFile("LoremIpsum.exe", $"/output:{n}").RunAsync();
             Assert.IsTrue(result.ExitCode == 0, "Expected exitcode=0");
             Assert.IsTrue(!result.IsDisposed, "Unexpected dispose");
             Assert.IsTrue(result.ProcessId != null, "Expected to find a process id");
@@ -76,7 +76,7 @@ namespace Tests
         public void ObservableErrorScenario()
         {
             const int n = 5;
-            var obs = ProcessObservable.TryCreateFromFile("LoremIpsum.exe", $"/error:{n}");
+            var obs = ProcessObservable.FromFile("LoremIpsum.exe", $"/error:{n}");
             var results = obs.ToEnumerable().ToArray();
 
             Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalClassifier.Started), $"Expected first signal classifier={ProcessSignalClassifier.Started}");
@@ -101,7 +101,7 @@ namespace Tests
         public async Task TaskErrorScenario()
         {
             const int n = 5;
-            var result = await ProcessObservable.TryCreateFromFile("LoremIpsum.exe", $"/error:{n}").StartTask();
+            var result = await ProcessObservable.FromFile("LoremIpsum.exe", $"/error:{n}").RunAsync();
             Assert.IsTrue(result.ExitCode != null, "Expected exitcode");
             Assert.IsTrue(!result.IsDisposed, "Unexpected dispose");
             Assert.IsTrue(result.ProcessId != null, "Expected to find a process id");
@@ -121,7 +121,7 @@ namespace Tests
         {
             const int errorCount = 5;
             const int outputCount = 10;
-            var obs = ProcessObservable.TryCreateFromFile("LoremIpsum.exe", $"/output:{errorCount} /error:{errorCount}");
+            var obs = ProcessObservable.FromFile("LoremIpsum.exe", $"/output:{errorCount} /error:{errorCount}");
             var results = obs.ToEnumerable().ToArray();
 
             Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalClassifier.Started), $"Expected first signal classifier={ProcessSignalClassifier.Started}");
@@ -138,7 +138,7 @@ namespace Tests
         {
             const int outputCount = 5;
             const int errorCount = 3;
-            var result = await ProcessObservable.TryCreateFromFile("LoremIpsum.exe", $"/output:{outputCount} /error:{errorCount}").StartTask();
+            var result = await ProcessObservable.FromFile("LoremIpsum.exe", $"/output:{outputCount} /error:{errorCount}").RunAsync();
             Assert.IsTrue(result.ExitCode != null, "Expected exitcode");
             Assert.IsTrue(!result.IsDisposed, "Unexpected dispose");
             Assert.IsTrue(result.ProcessId != null, "Expected to find a process id");
@@ -158,7 +158,7 @@ namespace Tests
         {
             const int outputCount = 10;
             const int errorCount = 5;
-            var result = await ProcessObservable.TryCreateFromFile("TestScript.cmd").StartTask();
+            var result = await ProcessObservable.FromFile("TestScript.cmd").RunAsync();
             Assert.IsTrue(!result.IsDisposed, "Unexpected dispose");
             Assert.IsTrue(result.ProcessId != null, "Expected to find a process id");
             Assert.IsTrue(result.Data.Length >= (outputCount + errorCount), $"Expected at least {outputCount + outputCount} lines");
@@ -175,7 +175,7 @@ namespace Tests
         [TestMethod]
         public async Task TaskFailureScenario()
         {
-            var result = await ProcessObservable.CreateFromExecutableFile("does not exist", "/fail").StartTask();
+            var result = await ProcessObservable.FromExecutableFile("does not exist", "/fail").RunAsync();
             Assert.IsTrue(!result.IsDisposed, "Unexpected dispose");
             Assert.IsTrue(result.Data.Length == 0, $"Expected no output or error data");
             Assert.IsNotNull(result.Error, "Expected a failure");

@@ -20,7 +20,7 @@ namespace ObservableProcess
         /// <param name="token">Optional cancellation token</param>
         /// <param name="progress">Optional progress to report to</param>
         /// <returns>Process completion data</returns>
-        public static Task<ProcessCompletion> StartTask(this IObservable<ProcessSignal> observable, CancellationToken? token = null, IProgress<ProcessSignal> progress = null)
+        public static Task<ProcessCompletion> RunAsync(this IObservable<ProcessSignal> observable, CancellationToken? token = null, IProgress<ProcessSignal> progress = null)
         {
             var task = observable.AsTask();
             task.Start();
