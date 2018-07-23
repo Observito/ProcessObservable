@@ -16,7 +16,7 @@ namespace ObservableProcess
         /// <summary>
         /// Classification of the signal type.
         /// </summary>
-        public ProcessSignalClassifier Type { get; private set; }
+        public ProcessSignalType Type { get; private set; }
 
         /// <summary>
         /// The id of the specific process that this signal is observed from.
@@ -25,13 +25,13 @@ namespace ObservableProcess
 
         /// <summary>
         /// Optional data from the process. 
-        /// Relevant for <see cref="ProcessSignalClassifier.Output"/> and <see cref="ProcessSignalClassifier.Error"/>.
+        /// Relevant for <see cref="ProcessSignalType.OutputData"/> and <see cref="ProcessSignalType.ErrorData"/>.
         /// </summary>
         public string Data { get; private set; }
 
         /// <summary>
         /// If the process has exited, then this is the process exit code.
-        /// Relevant for <see cref="ProcessSignalClassifier.Exited"/>
+        /// Relevant for <see cref="ProcessSignalType.Exited"/>
         /// </summary>
         public int? ExitCode { get; private set; }
 
@@ -43,68 +43,68 @@ namespace ObservableProcess
         {
             switch (Type)
             {
-                case ProcessSignalClassifier.Started:
+                case ProcessSignalType.Started:
                     return $"[PID={ProcessId}]/{Type}";
 
-                case ProcessSignalClassifier.Output:
-                case ProcessSignalClassifier.Error:
+                case ProcessSignalType.OutputData:
+                case ProcessSignalType.ErrorData:
                     return $"[PID={ProcessId}]/{Type}: {Data}";
 
-                case ProcessSignalClassifier.Exited:
+                case ProcessSignalType.Exited:
                     return $"[PID={ProcessId}->{ExitCode}]/{Type}";
 
-                case ProcessSignalClassifier.Disposed:
+                case ProcessSignalType.Disposed:
                     return $"[PID={ProcessId}]/{Type}";
             }
-            throw new NotImplementedException($"{nameof(ProcessSignalClassifier)}.{Type}");
+            throw new NotImplementedException($"{nameof(ProcessSignalType)}.{Type}");
         }
 
         #region Scenario constructors
         /// <summary>
-        /// Create a <see cref="ProcessSignalClassifier.Started"/> signal.
+        /// Create a <see cref="ProcessSignalType.Started"/> signal.
         /// </summary>
         public static ProcessSignal FromStarted(int processId) =>
             new ProcessSignal(__ => {
-                __.Type = ProcessSignalClassifier.Started;
+                __.Type = ProcessSignalType.Started;
                 __.ProcessId = processId;
             });
 
         /// <summary>
-        /// Create a <see cref="ProcessSignalClassifier.Output"/> signal.
+        /// Create a <see cref="ProcessSignalType.OutputData"/> signal.
         /// </summary>
         public static ProcessSignal FromOutput(int processId, string data) =>
             new ProcessSignal(__ => {
-                __.Type = ProcessSignalClassifier.Output;
+                __.Type = ProcessSignalType.OutputData;
                 __.ProcessId = processId;
                 __.Data = data;
             });
 
         /// <summary>
-        /// Create a <see cref="ProcessSignalClassifier.Error"/> signal.
+        /// Create a <see cref="ProcessSignalType.ErrorData"/> signal.
         /// </summary>
         public static ProcessSignal FromError(int? processId, string data) =>
             new ProcessSignal(__ => {
-                __.Type = ProcessSignalClassifier.Error;
+                __.Type = ProcessSignalType.ErrorData;
                 __.ProcessId = processId;
                 __.Data = data;
             });
 
         /// <summary>
-        /// Create a <see cref="ProcessSignalClassifier.Exited"/> signal.
+        /// Create a <see cref="ProcessSignalType.Exited"/> signal.
         /// </summary>
         public static ProcessSignal FromExited(int processId, int exitCode) =>
             new ProcessSignal(__ => {
-                __.Type = ProcessSignalClassifier.Exited;
+                __.Type = ProcessSignalType.Exited;
                 __.ProcessId = processId;
                 __.ExitCode = exitCode;
             });
 
         /// <summary>
-        /// Create a <see cref="ProcessSignalClassifier.Disposed"/> signal.
+        /// Create a <see cref="ProcessSignalType.Disposed"/> signal.
         /// </summary>
         public static ProcessSignal FromDisposed(int processId) =>
             new ProcessSignal(__ => {
-                __.Type = ProcessSignalClassifier.Disposed;
+                __.Type = ProcessSignalType.Disposed;
                 __.ProcessId = processId;
             });
         #endregion

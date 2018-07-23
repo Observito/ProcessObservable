@@ -34,17 +34,17 @@ namespace Tests
             var obs = ProcessObservable.FromFile("LoremIpsum.exe", $"/output:{n}");
             var results = obs.ToEnumerable().ToArray();
 
-            Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalClassifier.Started), $"Expected first signal classifier={ProcessSignalClassifier.Started}");
-            Assert.IsTrue(results.Any(__ => __.Type == ProcessSignalClassifier.Exited && __.ExitCode == 0), "Expected at least one signal with exitcode=0");
-            Assert.IsTrue(results.All(__ => __.Type != ProcessSignalClassifier.Disposed), "Unexpected dispose");
+            Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalType.Started), $"Expected first signal classifier={ProcessSignalType.Started}");
+            Assert.IsTrue(results.Any(__ => __.Type == ProcessSignalType.Exited && __.ExitCode == 0), "Expected at least one signal with exitcode=0");
+            Assert.IsTrue(results.All(__ => __.Type != ProcessSignalType.Disposed), "Unexpected dispose");
             Assert.IsTrue(results.Any(__ => __.ProcessId != null), "Expected to find a process id");
-            Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalClassifier.Output) == n, $"Expected to find {n} output lines");
-            Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalClassifier.Error) == 0, $"Expected to find 0 errors lines");
-            Assert.IsTrue(results.EndsWith(__ => __.Type == ProcessSignalClassifier.Exited || __.Type == ProcessSignalClassifier.Disposed), $"Expected Last signal classifier={ProcessSignalClassifier.Exited} or {ProcessSignalClassifier.Disposed}");
+            Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalType.OutputData) == n, $"Expected to find {n} output lines");
+            Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalType.ErrorData) == 0, $"Expected to find 0 errors lines");
+            Assert.IsTrue(results.EndsWith(__ => __.Type == ProcessSignalType.Exited || __.Type == ProcessSignalType.Disposed), $"Expected Last signal classifier={ProcessSignalType.Exited} or {ProcessSignalType.Disposed}");
             var c = 0;
             foreach (var result in results)
             {
-                if (result.Type == ProcessSignalClassifier.Output)
+                if (result.Type == ProcessSignalType.OutputData)
                 {
                     Assert.IsTrue(result.Data == LoremIpsumLines[c], $"Expected line data matches static lorem ipsum data");
                     c++;
@@ -79,17 +79,17 @@ namespace Tests
             var obs = ProcessObservable.FromFile("LoremIpsum.exe", $"/error:{n}");
             var results = obs.ToEnumerable().ToArray();
 
-            Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalClassifier.Started), $"Expected first signal classifier={ProcessSignalClassifier.Started}");
-            Assert.IsTrue(results.Any(__ => __.Type == ProcessSignalClassifier.Exited && __.ExitCode != null), "Expected at least one signal with exitcode");
-            Assert.IsTrue(results.All(__ => __.Type != ProcessSignalClassifier.Disposed), "Unexpected dispose");
+            Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalType.Started), $"Expected first signal classifier={ProcessSignalType.Started}");
+            Assert.IsTrue(results.Any(__ => __.Type == ProcessSignalType.Exited && __.ExitCode != null), "Expected at least one signal with exitcode");
+            Assert.IsTrue(results.All(__ => __.Type != ProcessSignalType.Disposed), "Unexpected dispose");
             Assert.IsTrue(results.Any(__ => __.ProcessId != null), "Expected to find a process id");
-            Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalClassifier.Error) == n, $"Expected to find {n} error lines");
-            Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalClassifier.Output) == 0, $"Expected to find 0 output lines");
-            Assert.IsTrue(results.EndsWith(__ => __.Type == ProcessSignalClassifier.Exited || __.Type == ProcessSignalClassifier.Disposed), $"Expected Last signal classifier={ProcessSignalClassifier.Exited} or {ProcessSignalClassifier.Disposed}");
+            Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalType.ErrorData) == n, $"Expected to find {n} error lines");
+            Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalType.OutputData) == 0, $"Expected to find 0 output lines");
+            Assert.IsTrue(results.EndsWith(__ => __.Type == ProcessSignalType.Exited || __.Type == ProcessSignalType.Disposed), $"Expected Last signal classifier={ProcessSignalType.Exited} or {ProcessSignalType.Disposed}");
             var c = 0;
             foreach (var result in results)
             {
-                if (result.Type == ProcessSignalClassifier.Output)
+                if (result.Type == ProcessSignalType.OutputData)
                 {
                     Assert.IsTrue(result.Data == LoremIpsumLines[c], $"Expected line data matches static lorem ipsum data");
                     c++;
@@ -124,13 +124,13 @@ namespace Tests
             var obs = ProcessObservable.FromFile("LoremIpsum.exe", $"/output:{errorCount} /error:{errorCount}");
             var results = obs.ToEnumerable().ToArray();
 
-            Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalClassifier.Started), $"Expected first signal classifier={ProcessSignalClassifier.Started}");
-            Assert.IsTrue(results.Any(__ => __.Type == ProcessSignalClassifier.Exited && __.ExitCode != null), "Expected at least one signal with exitcode");
-            Assert.IsTrue(results.All(__ => __.Type != ProcessSignalClassifier.Disposed), "Unexpected dispose");
+            Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalType.Started), $"Expected first signal classifier={ProcessSignalType.Started}");
+            Assert.IsTrue(results.Any(__ => __.Type == ProcessSignalType.Exited && __.ExitCode != null), "Expected at least one signal with exitcode");
+            Assert.IsTrue(results.All(__ => __.Type != ProcessSignalType.Disposed), "Unexpected dispose");
             Assert.IsTrue(results.Any(__ => __.ProcessId != null), "Expected to find a process id");
-            Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalClassifier.Error) == errorCount, $"Expected to find {errorCount} error lines");
-            Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalClassifier.Output) == errorCount, $"Expected to find {outputCount} output lines");
-            Assert.IsTrue(results.EndsWith(__ => __.Type == ProcessSignalClassifier.Exited || __.Type == ProcessSignalClassifier.Disposed), $"Expected Last signal classifier={ProcessSignalClassifier.Exited} or {ProcessSignalClassifier.Disposed}");
+            Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalType.ErrorData) == errorCount, $"Expected to find {errorCount} error lines");
+            Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalType.OutputData) == errorCount, $"Expected to find {outputCount} output lines");
+            Assert.IsTrue(results.EndsWith(__ => __.Type == ProcessSignalType.Exited || __.Type == ProcessSignalType.Disposed), $"Expected Last signal classifier={ProcessSignalType.Exited} or {ProcessSignalType.Disposed}");
         }
 
         [TestMethod]

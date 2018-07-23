@@ -3,7 +3,7 @@
     /// <summary>
     /// Describes the kinds of signals a process can emit.
     /// </summary>
-    public enum ProcessSignalClassifier
+    public enum ProcessSignalType
     {
         /// <summary>
         /// The process was started.
@@ -14,12 +14,12 @@
         /// <summary>
         /// The source process emitted output data.
         /// </summary>
-        Output,
+        OutputData,
 
         /// <summary>
         /// The source process emitted error data.
         /// </summary>
-        Error,
+        ErrorData,
 
         /// <summary>
         /// The source process was exited.

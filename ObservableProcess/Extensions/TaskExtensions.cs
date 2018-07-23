@@ -63,19 +63,19 @@ namespace ObservableProcess
                         // Collect result info
                         switch (signal.Type)
                         {
-                            case ProcessSignalClassifier.Started:
+                            case ProcessSignalType.Started:
                                 break;
-                            case ProcessSignalClassifier.Exited:
+                            case ProcessSignalType.Exited:
                                 exitCode = signal.ExitCode;
                                 break;
-                            case ProcessSignalClassifier.Disposed:
+                            case ProcessSignalType.Disposed:
                                 isDisposed = true;
                                 break;
-                            case ProcessSignalClassifier.Output:
+                            case ProcessSignalType.OutputData:
                                 data.Add(new DataLine(DataLineType.Output, signal.Data, DateTime.Now, counter));
                                 counter++;
                                 break;
-                            case ProcessSignalClassifier.Error:
+                            case ProcessSignalType.ErrorData:
                                 data.Add(new DataLine(DataLineType.Error, signal.Data, DateTime.Now, counter));
                                 counter++;
                                 break;
