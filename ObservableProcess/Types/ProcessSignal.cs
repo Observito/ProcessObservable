@@ -44,6 +44,9 @@ namespace ObservableProcess
             switch (Type)
             {
                 case ProcessSignalType.Started:
+                case ProcessSignalType.OutputDataDone:
+                case ProcessSignalType.ErrorDataDone:
+                case ProcessSignalType.Disposed:
                     return $"[PID={ProcessId}]/{Type}";
 
                 case ProcessSignalType.OutputData:
@@ -52,9 +55,6 @@ namespace ObservableProcess
 
                 case ProcessSignalType.Exited:
                     return $"[PID={ProcessId}->{ExitCode}]/{Type}";
-
-                case ProcessSignalType.Disposed:
-                    return $"[PID={ProcessId}]/{Type}";
             }
             throw new NotImplementedException($"{nameof(ProcessSignalType)}.{Type}");
         }
@@ -72,7 +72,7 @@ namespace ObservableProcess
         /// <summary>
         /// Create a <see cref="ProcessSignalType.OutputData"/> signal.
         /// </summary>
-        public static ProcessSignal FromOutput(int processId, string data) =>
+        public static ProcessSignal FromOutputData(int processId, string data) =>
             new ProcessSignal(__ => {
                 __.Type = ProcessSignalType.OutputData;
                 __.ProcessId = processId;
@@ -82,12 +82,31 @@ namespace ObservableProcess
         /// <summary>
         /// Create a <see cref="ProcessSignalType.ErrorData"/> signal.
         /// </summary>
-        public static ProcessSignal FromError(int? processId, string data) =>
+        public static ProcessSignal FromErrorData(int? processId, string data) =>
             new ProcessSignal(__ => {
                 __.Type = ProcessSignalType.ErrorData;
                 __.ProcessId = processId;
                 __.Data = data;
             });
+
+        /// <summary>
+        /// Create a <see cref="ProcessSignalType.OutputDataDone"/> signal.
+        /// </summary>
+        public static ProcessSignal FromOutputDataDone(int processId) =>
+            new ProcessSignal(__ => {
+                __.Type = ProcessSignalType.OutputDataDone;
+                __.ProcessId = processId;
+            });
+
+        /// <summary>
+        /// Create a <see cref="ProcessSignalType.ErrorDataDone"/> signal.
+        /// </summary>
+        public static ProcessSignal FromErrorDataDone(int? processId) =>
+            new ProcessSignal(__ => {
+                __.Type = ProcessSignalType.ErrorDataDone;
+                __.ProcessId = processId;
+            });
+
 
         /// <summary>
         /// Create a <see cref="ProcessSignalType.Exited"/> signal.

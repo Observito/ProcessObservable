@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reactive.Disposables;
@@ -126,7 +127,7 @@ namespace ObservableProcess
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
 
-            return System.Reactive.Linq.Observable.Create<ProcessSignal>((IObserver<ProcessSignal> observer) =>
+            return Observable.Create<ProcessSignal>(observer =>
             {
                 // Create the new process
                 var process = source();
@@ -147,24 +148,43 @@ namespace ObservableProcess
                     //Test pre-emptive disposal:
                     //Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(t => { proc.Dispose(); });
 
-                    // Subscribe to the Disposed event
-                    subscriptions.Add(
-                        process.DisposedObservable().Subscribe(
-                            onNext: (System.Reactive.EventPattern<object> _) =>
-                            {
-                                observer.OnNext(ProcessSignal.FromDisposed(procId.Value));
-                                subscriptions.Dispose();
-                            }
-                        )
-                    );
+                    // Coordinate completion signals
+                    IObservable<ProcessCoordinationSignalType> completionObservable = null;
+                    {
+                        var coordinated = new List<IObservable<ProcessSignalType>>();
+                        if (process.StartInfo.RedirectStandardOutput)
+                            coordinated.Add(process.OutputDataReceivedObservable().Where(x => x.EventArgs.Data == null).Select(_ => ProcessSignalType.OutputDataDone));
+                        if (process.StartInfo.RedirectStandardError)
+                            coordinated.Add(process.ErrorDataReceivedObservable().Where(x => x.EventArgs.Data == null).Select(_ => ProcessSignalType.ErrorDataDone));
+                        coordinated.Add(process.ExitedObservable().Select(_ => ProcessSignalType.Exited));
+                        coordinated.Add(process.DisposedObservable().Select(_ => ProcessSignalType.Disposed));
+                        completionObservable =
+                            Observable.Merge(coordinated)
+                            .Select(signalType => ProcessCoordinationSignalType.Of(signalType))
+                            .Scan((a, b) => a + b)
+                            .Where(x => x.Completed);
+                    }
 
-                    // Subscribe to the Exited event
+                    // Dispose subscriptions 
                     subscriptions.Add(
-                        process.ExitedObservable().Subscribe(
-                            onNext: (System.Reactive.EventPattern<object> _) =>
+                        completionObservable
+                        .Subscribe(
+                            onNext: ev =>
                             {
-                                observer.OnNext(ProcessSignal.FromExited(procId.Value, process.ExitCode));
                                 subscriptions.Dispose();
+                                if (ev.Exited)
+                                {
+                                    observer.OnNext(ProcessSignal.FromExited(procId.Value, process.ExitCode));
+                                }
+                                else if (ev.Disposed)
+                                {
+                                    observer.OnNext(ProcessSignal.FromDisposed(procId.Value));
+                                }
+                                else
+                                {
+                                    Debug.WriteLine("Implementation error: expected exited or dispose - found neither");
+                                }
+                                observer.OnCompleted();
                             }
                         )
                     );
@@ -173,11 +193,14 @@ namespace ObservableProcess
                     if (process.StartInfo.RedirectStandardOutput)
                     {
                         subscriptions.Add(
-                            process.OutputDataReceivedObservable().Where((System.Reactive.EventPattern<DataReceivedEventArgs> ev) => ev.EventArgs.Data != null)
+                            process.OutputDataReceivedObservable()
                             .Subscribe(
-                                onNext: (System.Reactive.EventPattern<DataReceivedEventArgs> ev) =>
+                                onNext: ev =>
                                 {
-                                    observer.OnNext(ProcessSignal.FromOutput(procId.Value, ev.EventArgs.Data));
+                                    if (ev.EventArgs.Data == null)
+                                        observer.OnNext(ProcessSignal.FromOutputDataDone(procId.Value));
+                                    else
+                                        observer.OnNext(ProcessSignal.FromOutputData(procId.Value, ev.EventArgs.Data));
                                 }
                             )
                         );
@@ -187,20 +210,20 @@ namespace ObservableProcess
                     if (process.StartInfo.RedirectStandardError)
                     {
                         subscriptions.Add(
-                            process.ErrorDataReceivedObservable().Where((System.Reactive.EventPattern<DataReceivedEventArgs> ev) => ev.EventArgs.Data != null).Subscribe(
-                                onNext: (System.Reactive.EventPattern<DataReceivedEventArgs> ev) =>
+                            process.ErrorDataReceivedObservable()
+                            .Subscribe(
+                                onNext: ev =>
                                 {
                                     // In the case where a subscription error happened, the process id does not exist
                                     // - that scenario is modelled as an OnError signal.
-                                    observer.OnNext(ProcessSignal.FromError(procId, ev.EventArgs.Data));
+                                    if (ev.EventArgs.Data == null)
+                                        observer.OnNext(ProcessSignal.FromErrorDataDone(procId.Value));
+                                    else
+                                        observer.OnNext(ProcessSignal.FromErrorData(procId, ev.EventArgs.Data));
                                 }
                             )
                         );
                     }
-
-                    // Add a notification to the subscriber that the subscription is completed 
-                    // whenever the subscription is disposed by whatever means
-                    subscriptions.Add(Disposable.Create(observer.OnCompleted));
 
                     // Attempt to start the process
                     try
