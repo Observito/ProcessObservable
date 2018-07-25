@@ -158,10 +158,15 @@ namespace ObservableProcess
                             coordinated.Add(process.ErrorDataReceivedObservable().Where(x => x.EventArgs.Data == null).Select(_ => ProcessSignalType.ErrorDataDone));
                         coordinated.Add(process.ExitedObservable().Select(_ => ProcessSignalType.Exited));
                         coordinated.Add(process.DisposedObservable().Select(_ => ProcessSignalType.Disposed));
+                        var initial = new ProcessCoordinationSignalType()
+                        {
+                            OutputDataDone = !process.StartInfo.RedirectStandardOutput,
+                            ErrorDataDone = !process.StartInfo.RedirectStandardError,
+                        };
                         completionObservable =
                             Observable.Merge(coordinated)
                             .Select(signalType => ProcessCoordinationSignalType.Of(signalType))
-                            .Scan((a, b) => a + b)
+                            .Scan(initial, (a, b) => a + b)
                             .Where(x => x.Completed);
                     }
 

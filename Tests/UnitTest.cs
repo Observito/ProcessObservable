@@ -181,6 +181,35 @@ namespace Tests
             Assert.IsNotNull(result.Error, "Expected a failure");
         }
 
+        [TestMethod]
+        public void ManyObservableOutputScenario()
+        {
+            const int repetitions = 30;
+            const int n = 5;
+            var obs = ProcessObservable.FromFile("LoremIpsum.exe", $"/output:{n}");
+            foreach (var _ in Enumerable.Range(0, repetitions))
+            {
+                var results = obs.ToEnumerable().ToArray();
+
+                Assert.IsTrue(results.StartsWith(__ => __.Type == ProcessSignalType.Started), $"Expected first signal classifier={ProcessSignalType.Started}");
+                Assert.IsTrue(results.Any(__ => __.Type == ProcessSignalType.Exited && __.ExitCode == 0), "Expected at least one signal with exitcode=0");
+                Assert.IsTrue(results.All(__ => __.Type != ProcessSignalType.Disposed), "Unexpected dispose");
+                Assert.IsTrue(results.Any(__ => __.ProcessId != null), "Expected to find a process id");
+                Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalType.OutputData) == n, $"Expected to find {n} output lines");
+                Assert.IsTrue(results.Count(__ => __.Type == ProcessSignalType.ErrorData) == 0, $"Expected to find 0 errors lines");
+                Assert.IsTrue(results.EndsWith(__ => __.Type == ProcessSignalType.Exited || __.Type == ProcessSignalType.Disposed), $"Expected Last signal classifier={ProcessSignalType.Exited} or {ProcessSignalType.Disposed}");
+                var c = 0;
+                foreach (var result in results)
+                {
+                    if (result.Type == ProcessSignalType.OutputData)
+                    {
+                        Assert.IsTrue(result.Data == LoremIpsumLines[c], $"Expected line data matches static lorem ipsum data");
+                        c++;
+                    }
+                }
+            }
+        }
+
         // TODO disposed test
         // TODO progress test
         // TODO failfast test
