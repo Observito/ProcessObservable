@@ -7,21 +7,93 @@ namespace ObservableProcess
 {
     public static class ProcessDescriptor
     {
+        #region Clone/Update/With
         /// <summary>
-        /// Create a new non-running process from the given start info.
+        /// Update source with the given customizations.
         /// </summary>
-        /// <param name="info">The process start info</param>
-        /// <returns>The new process</returns>
-        public static Process ToProcess(this ProcessStartInfo info, Action<Process> customizer = null)
+        /// <param name="source">The source <see cref="ProcessStartInfo"/></param>
+        /// <param name="customizer">The customizations to apply</param>
+        /// <returns>The updated <see cref="ProcessStartInfo"/></returns>
+        public static ProcessStartInfo Update(this ProcessStartInfo source, Action<ProcessStartInfo> customizer)
         {
-            if (info == null)
-                throw new ArgumentNullException(nameof(info));
-
-            var process = new Process() { StartInfo = info };
-            customizer?.Invoke(process);
-            return process;
+            customizer?.Invoke(source);
+            return source;
         }
 
+        /// <summary>
+        /// Create a clone of <param name="source"/> with the given customizations.
+        /// </summary>
+        /// <param name="source">The source <see cref="ProcessStartInfo"/></param>
+        /// <param name="customizer">The customizations to apply</param>
+        /// <returns>The cloned and customized version of <paramref name="source"/></returns>
+        public static ProcessStartInfo With(this ProcessStartInfo source, Action<ProcessStartInfo> customizer) =>
+            source.Clone().Update(customizer);
+
+        /// <summary>
+        /// Clones the source <see cref="ProcessStartInfo"/>.
+        /// </summary>
+        /// <param name="source">The <see cref="ProcessStartInfo"/> to clone.</param>
+        /// <returns>The cloned <see cref="ProcessStartInfo"/>.</returns>
+        public static ProcessStartInfo Clone(this ProcessStartInfo source) =>
+            new ProcessStartInfo()
+            {
+                FileName = source.FileName,
+                Arguments = source.Arguments,
+                WorkingDirectory = source.WorkingDirectory,
+                Domain = source.Domain,
+                UserName = source.UserName,
+                Password = source.Password,
+                LoadUserProfile = source.LoadUserProfile,
+                UseShellExecute = source.UseShellExecute,
+                ErrorDialog = source.ErrorDialog,
+                ErrorDialogParentHandle = source.ErrorDialogParentHandle,
+                CreateNoWindow = source.CreateNoWindow,
+                WindowStyle = source.WindowStyle,
+                RedirectStandardError = source.RedirectStandardError,
+                RedirectStandardInput = source.RedirectStandardInput,
+                RedirectStandardOutput = source.RedirectStandardOutput,
+                StandardErrorEncoding = source.StandardErrorEncoding,
+                StandardOutputEncoding = source.StandardOutputEncoding,
+                Verb = source.Verb,
+            }
+            .Update(cloned =>
+            {
+                foreach (string key in source.Environment.Keys)
+                    cloned.Environment[key] = source.Environment[key];
+                foreach (string key in source.EnvironmentVariables.Keys)
+                    cloned.EnvironmentVariables[key] = source.EnvironmentVariables[key];
+            });
+        #endregion
+
+        #region Common customizations
+        /// <summary>
+        /// Creates a new cloned <see cref="ProcessStartInfo"/> with either redirect all IO or not.
+        /// </summary>
+        /// <param name="source">The <see cref="ProcessStartInfo"/></param>
+        /// <param name="redirect">Should all IO be redirected? (StandardInput, StandardOutput, StandardError)</param>
+        /// <returns>The updated <see cref="ProcessStartInfo"/></returns>
+        public static ProcessStartInfo WithRedirectIO(this ProcessStartInfo source, bool redirect) =>
+            source.With(__ => {
+                __.RedirectStandardInput = redirect;
+                __.RedirectStandardOutput = redirect;
+                __.RedirectStandardError = redirect;
+            });
+
+        /// <summary>
+        /// Creates a new cloned <see cref="ProcessStartInfo"/> with either UI or not.
+        /// </summary>
+        /// <param name="source">The <see cref="ProcessStartInfo"/></param>
+        /// <param name="gui">Should all IO be redirected? (StandardInput, StandardOutput, StandardError)</param>
+        /// <returns>The updated <see cref="ProcessStartInfo"/></returns>
+        public static ProcessStartInfo WithGUI(this ProcessStartInfo source, bool gui) =>
+            source.With(__ => {
+                __.ErrorDialog = gui;
+                __.WindowStyle = gui ? ProcessWindowStyle.Normal : ProcessWindowStyle.Hidden;
+                __.CreateNoWindow = !gui;
+            });
+        #endregion
+
+        #region Creators
         /// <summary>
         /// Creates start info for either an executable or an associated/openable file.
         /// </summary>
@@ -64,14 +136,10 @@ namespace ObservableProcess
             {
                 FileName = "cmd.exe",
                 Arguments = argStr,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true,
-                ErrorDialog = false,
-                WindowStyle = ProcessWindowStyle.Hidden,
-            };
+            }
+            .WithGUI(false)
+            .WithRedirectIO(true);
         }
 
         /// <summary>
@@ -92,14 +160,28 @@ namespace ObservableProcess
             {
                 FileName = fileName,
                 Arguments = arguments,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true,
-                ErrorDialog = false,
-                WindowStyle = ProcessWindowStyle.Hidden,
-            };
+            }
+            .WithGUI(false)
+            .WithRedirectIO(true);
         }
+        #endregion
+
+        #region Conversions
+        /// <summary>
+        /// Create a new non-running process from the given start info.
+        /// </summary>
+        /// <param name="info">The <see cref="ProcessStartInfo"/></param>
+        /// <returns>The new process</returns>
+        public static Process ToProcess(this ProcessStartInfo info, Action<Process> customizer = null)
+        {
+            if (info == null)
+                throw new ArgumentNullException(nameof(info));
+
+            var process = new Process() { StartInfo = info.Clone() };
+            customizer?.Invoke(process);
+            return process;
+        }
+        #endregion
     }
 }

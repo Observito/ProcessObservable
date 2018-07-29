@@ -21,18 +21,16 @@ namespace ObservableProcess
         /// <param name="fileName">File to run</param>
         /// <param name="arguments">Optional arguments to executable or script; arguments must be escaped as per normal cmd rules</param>
         /// <param name="customizer">Optional process customizer</param>
-        /// <param name="failfast">If true exceptions at subscription time are rethrown, 
-        /// otherwise subscription exceptions are materialized as an OnError call.</param>
         /// <param name="progress">Optional progress reporting</param>
         /// <param name="token">Optional cancellation token</param>
         /// <exception cref="ArgumentOutOfRangeException">If the file type is not supported or the file type cannot be determined</exception>
         /// <returns>The new running task</returns>
-        public static Task<ProcessCompletion> RunAsync(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false, CancellationToken? token = null, IProgress<ProcessSignal> progress = null)
+        public static Task<ProcessCompletion> RunAsync(string fileName, string arguments = null, Action<Process> customizer = null, CancellationToken? token = null, IProgress<ProcessSignal> progress = null)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName));
 
-            var io = FromFile(fileName, arguments, customizer, failfast);
+            var io = FromFile(fileName, arguments, customizer);
             return io.RunAsync(token, progress);
         }
 
@@ -42,16 +40,14 @@ namespace ObservableProcess
         /// <param name="fileName">File to run</param>
         /// <param name="arguments">Optional arguments to executable or script; arguments must be escaped as per normal cmd rules</param>
         /// <param name="customizer">Optional process customizer</param>
-        /// <param name="failfast">If true exceptions at subscription time are rethrown, 
-        /// otherwise subscription exceptions are materialized as an OnError call.</param>
         /// <exception cref="ArgumentOutOfRangeException">If the file type is not supported or the file type cannot be determined</exception>
         /// <returns>The new observable</returns>
-        public static IObservable<ProcessSignal> FromFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
+        public static IObservable<ProcessSignal> FromFile(string fileName, string arguments = null, Action<Process> customizer = null)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName));
 
-            return ProcessDescriptor.FromFile(fileName, arguments).ToObservable(customizer, failfast);
+            return ProcessDescriptor.FromFile(fileName, arguments).ToObservable(customizer);
         }
 
         /// <summary>
@@ -60,16 +56,14 @@ namespace ObservableProcess
         /// <param name="fileName">Script file to run</param>
         /// <param name="arguments">Optional arguments to executable; arguments must be escaped as per normal cmd rules</param>
         /// <param name="customizer">Optional process customizer</param>
-        /// <param name="failfast">If true exceptions at subscription time are rethrown, 
-        /// otherwise subscription exceptions are materialized as an OnError call.</param>
         /// <exception cref="ArgumentOutOfRangeException">If the fileName is invalid</exception>
         /// <returns>The new observable</returns>
-        public static IObservable<ProcessSignal> FromAssociatedFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
+        public static IObservable<ProcessSignal> FromAssociatedFile(string fileName, string arguments = null, Action<Process> customizer = null)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName));
 
-            return ProcessDescriptor.FromAssociatedFile(fileName, arguments).ToObservable(customizer, failfast);
+            return ProcessDescriptor.FromAssociatedFile(fileName, arguments).ToObservable(customizer);
         }
 
         /// <summary>
@@ -78,11 +72,9 @@ namespace ObservableProcess
         /// <param name="fileName">Executable file to run</param>
         /// <param name="arguments">Optional arguments to script; arguments must be escaped as per normal cmd rules</param>
         /// <param name="customizer">Optional process customizer</param>
-        /// <param name="failfast">If true exceptions at subscription time are rethrown, 
-        /// otherwise subscription exceptions are materialized as an OnError call.</param>
         /// <exception cref="ArgumentOutOfRangeException">If the fileName is invalid</exception>
         /// <returns>The new observable</returns>
-        public static IObservable<ProcessSignal> FromExecutableFile(string fileName, string arguments = null, Action<Process> customizer = null, bool failfast = false)
+        public static IObservable<ProcessSignal> FromExecutableFile(string fileName, string arguments = null, Action<Process> customizer = null)
         {
             if (string.IsNullOrWhiteSpace(fileName))
                 throw new ArgumentOutOfRangeException(nameof(fileName));
@@ -92,37 +84,34 @@ namespace ObservableProcess
                 var proc = ProcessDescriptor.FromExecutableFile(fileName, arguments).ToProcess();
                 customizer?.Invoke(proc);
                 return proc;
-            }, failfast: failfast);
+            });
         }
 
 
 
         /// <summary>
         /// Creates a new process observable from a process factory. Note that this method does not try to auto-correct
-        /// its input. The process factory must enable 
+        /// its input.
         /// </summary>
         /// <param name="factory">The process factory</param>
-        /// <param name="failfast">If true then exceptions at process start time will be propagated; if false they will be materialized as an OnError case</param>
         /// <exception cref="ArgumentNullException">If the start info is null</exception>
         /// <returns>The new observable</returns>
-        public static IObservable<ProcessSignal> ToObservable(this ProcessStartInfo info, Action<Process> customizer = null, bool failfast = false)
+        public static IObservable<ProcessSignal> ToObservable(this ProcessStartInfo info, Action<Process> customizer = null)
         {
             if (info == null)
                 throw new ArgumentNullException(nameof(info));
 
-            return FromProcessSource(() => info.ToProcess(customizer), failfast);
+            return FromProcessSource(() => info.ToProcess(customizer));
         }
 
         /// <summary>
         /// Creates a new process observable from a process factory. Note that this method does not try to auto-correct
-        /// its input. The process factory must enable 
+        /// its input.
         /// </summary>
         /// <param name="source">The process factory</param>
-        /// <param name="failfast">If true then exceptions at process start time will be propagated; if false they will be materialized as an OnError case</param>
         /// <exception cref="ArgumentNullException">If the process factory is null</exception>
-        /// <exception cref="Exception">If failfast and an eror occurs during process start (during subscription)</exception>
         /// <returns>The created process observable</returns>
-        public static IObservable<ProcessSignal> FromProcessSource(Func<Process> source, bool failfast = false)
+        public static IObservable<ProcessSignal> FromProcessSource(Func<Process> source)
         {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
@@ -245,19 +234,9 @@ namespace ObservableProcess
                     {
                         var ctx = new Exception("Error subscribing to ProcessObservable", ex);
                         ctx.Data.Add("ProcessId", procId);
-                        if (failfast)
-                        {
-                            // Propagate error
-                            throw ctx;
-                        }
 
-                        // Exception => IObservable.OnError
-                        observer.OnError(ctx);
-
-                        // Dispose all subscriptions
-                        subscriptions.Dispose();
-
-                        return subscriptions;
+                        // Propagate error
+                        throw ctx;
                     }
 
                     // Start capturing standard output asynchronously
