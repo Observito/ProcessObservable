@@ -134,6 +134,11 @@ namespace ObservableProcess
                     // the subscription is disposed 
                     int? procId = null;
 
+                    // Need to capture the exit code, so it can be returned as metadata
+                    int? exitCode = null;
+
+                    subscriptions.Add(process.ExitedObservable().Subscribe(x => exitCode = process.ExitCode));
+
                     //Test pre-emptive disposal:
                     //Task.Delay(TimeSpan.FromSeconds(2)).ContinueWith(t => { proc.Dispose(); });
 
@@ -165,10 +170,9 @@ namespace ObservableProcess
                         .Subscribe(
                             onNext: ev =>
                             {
-                                subscriptions.Dispose();
                                 if (ev.Exited)
                                 {
-                                    observer.OnNext(ProcessSignal.FromExited(procId.Value, process.ExitCode));
+                                    observer.OnNext(ProcessSignal.FromExited(procId.Value, exitCode ?? 0));
                                 }
                                 else if (ev.Disposed)
                                 {
@@ -179,6 +183,7 @@ namespace ObservableProcess
                                     Debug.WriteLine("Implementation error: expected exited or dispose - found neither");
                                 }
                                 observer.OnCompleted();
+                                subscriptions.Dispose();
                             }
                         )
                     );
@@ -247,8 +252,11 @@ namespace ObservableProcess
                     if (process.StartInfo.RedirectStandardError)
                         process.BeginErrorReadLine();
 
-                    // The result is a disposable object representing the subscription
-                    return subscriptions;
+                    // The result is a disposable that will dispose the process
+                    return Disposable.Create(() =>
+                    {
+                        process.Dispose();
+                    });
                 }
                 catch
                 {
