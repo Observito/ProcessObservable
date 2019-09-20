@@ -8,4 +8,4 @@ awaited asynchronously.
 ## NuGet
 
 ProcessObservable is available as a NuGet package:
-https://www.nuget.org/packages/ProcessObservable/
+https://www.nuget.org/packages/Observito.ProcessObservable/
