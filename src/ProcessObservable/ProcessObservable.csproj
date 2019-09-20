@@ -6,6 +6,7 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Authors>Bent Rasmussen</Authors>
     <Company>Observito</Company>
+    <Title>ProcessObservable</Title>
     <Description>Push stream (IObservable) and async/await (Task) abstraction for processes. Observe processes like event streams.</Description>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageProjectUrl>https://github.com/Observito/ProcessObservable</PackageProjectUrl>
@@ -14,6 +15,8 @@
     <PackageReleaseNotes>New release. Project transferred to Observito stewardship.</PackageReleaseNotes>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>key.pfx</AssemblyOriginatorKeyFile>
+    <AssemblyName>ProcessObservable</AssemblyName>
+    <Copyright>Observito 2019</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
