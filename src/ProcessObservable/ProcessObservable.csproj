@@ -17,7 +17,7 @@
     <AssemblyOriginatorKeyFile>key.pfx</AssemblyOriginatorKeyFile>
     <AssemblyName>ProcessObservable</AssemblyName>
     <Copyright>Observito 2019</Copyright>
-    <PackageId>Observable.ProcessObservable</PackageId>
+    <PackageId>Observito.ProcessObservable</PackageId>
   </PropertyGroup>
 
   <ItemGroup>
