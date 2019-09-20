@@ -20,12 +20,14 @@ namespace ProcessObservableTest
             Assert.IsTrue(signals.EndsWith(__ => __.Type == ProcessSignalType.Exited || __.Type == ProcessSignalType.Disposed), $"Expected Last signal classifier={ProcessSignalType.Exited} or {ProcessSignalType.Disposed}");
         }
 
-        /*
         [TestMethod]
         public void ObservableOutputScenario()
         {
             const int n = 5;
-            var obs = ProcessObservable.FromFile(Constants.IpsumExecutablePath, $"/output:{n}");
+            var obs = 
+                CreateProcessStartInfo
+                .FromFile(Constants.IpsumExecutablePath, $"/output:{n}")
+                .ToObservable();
             var signals = obs.ToEnumerable().ToList();
 
             GeneralInvariants(signals);
@@ -44,14 +46,14 @@ namespace ProcessObservableTest
                 }
             }
         }
-        */
         
-        /*
         [TestMethod]
         public void ObservableErrorScenario()
         {
             const int n = 5;
-            var obs = ProcessObservable.FromFile(Constants.IpsumExecutablePath, $"/error:{n}");
+            var obs = CreateProcessStartInfo
+                .FromFile(Constants.IpsumExecutablePath, $"/error:{n}")
+                .ToObservable();
             var signals = obs.ToEnumerable().ToList();
 
             GeneralInvariants(signals);
@@ -65,12 +67,11 @@ namespace ProcessObservableTest
             {
                 if (result.Type == ProcessSignalType.OutputData)
                 {
-                    Assert.IsTrue(result.Data == Constants.IpsumLines[c], $"Expected line data matches static lorem ipsum data");
+                    Assert.AreEqual(Constants.IpsumLines[c], result.Data, $"Expected line data matches static lorem ipsum data");
                     c++;
                 }
             }
         }
-        */
         
         [TestMethod]
         public void ObservableMixedScenario()
@@ -103,15 +104,15 @@ namespace ProcessObservableTest
                     .EnsureFileExists()
                     .ToObservable()
                     .RunAsync();
-            Assert.IsTrue(!result.IsDisposed, "Unexpected dispose");
-            Assert.IsTrue(result.ProcessId != null, "Expected to find a process id");
+            Assert.IsFalse(result.IsDisposed, "Unexpected dispose");
+            Assert.IsNotNull(result.ProcessId, "Expected to find a process id");
             Assert.IsTrue(result.Data.Length >= (outputCount + errorCount), $"Expected at least {outputCount + outputCount} lines");
             Assert.IsTrue(result.Data.Count(l => l.Type == DataLineType.Output) >= outputCount, $"Expected at least {outputCount} {DataLineType.Output} lines");
             Assert.IsTrue(result.Data.Count(l => l.Type == DataLineType.Error) >= errorCount, $"Expected at least {errorCount} {DataLineType.Error} lines");
             var c = 0;
             foreach (var l in result.Data)
             {
-                Assert.IsTrue(l.LineNumber == c, $"Expected line number is sequential, starting with 0");
+                Assert.AreEqual(c, l.LineNumber, $"Expected line number is sequential, starting with 0");
                 c++;
             }
         }
@@ -141,7 +142,7 @@ namespace ProcessObservableTest
                 {
                     if (result.Type == ProcessSignalType.OutputData)
                     {
-                        Assert.IsTrue(result.Data == Constants.IpsumLines[c], $"Expected line data matches static lorem ipsum data");
+                        Assert.AreEqual(Constants.IpsumLines[c], result.Data, $"Expected line data matches static lorem ipsum data");
                         c++;
                     }
                 }
