@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <RootNamespace>Observito.Diagnostics</RootNamespace>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Bent Rasmussen</Authors>
+    <Company>Observito</Company>
+    <Description>Push stream (IObservable) and async/await (Task) abstraction for processes. Observe processes like event streams.</Description>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageProjectUrl>https://github.com/Observito/ProcessObservable</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Observito/ProcessObservable</RepositoryUrl>
+    <PackageTags>Process,Diagnostics,IObservable,Reactive,Asynchronous,IO</PackageTags>
+    <PackageReleaseNotes>New release. Project transferred to Observito stewardship.</PackageReleaseNotes>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>key.pfx</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Reactive" Version="4.1.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\LICENSE">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
+
+</Project>
