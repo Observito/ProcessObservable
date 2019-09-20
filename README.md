@@ -30,5 +30,5 @@ var observable = ProcessObservable.TryCreateFromFile("LoremIpsum.exe");
 
 ## NuGet
 
-ObservableProcess is available as a NuGet package:
-https://www.nuget.org/packages/Exoteric-ObservableProcess
+ProcessObservable is available as a NuGet package:
+https://www.nuget.org/packages/ProcessObservable/
