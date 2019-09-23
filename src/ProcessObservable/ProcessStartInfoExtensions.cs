@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Text;
 
 namespace Observito.Diagnostics
 {
@@ -69,8 +68,6 @@ namespace Observito.Diagnostics
         /// <returns>The cloned and customized version of <paramref name="source"/></returns>
         public static ProcessStartInfo With(this ProcessStartInfo source, Action<ProcessStartInfo> customizer) =>
             source.Clone().Update(customizer);
-
-
 
         /// <summary>
         /// Creates a new cloned <see cref="ProcessStartInfo"/> with either redirect all IO or not.
